@@ -1,5 +1,4 @@
 import Phaser from 'phaser'
-import { createGeneratedAssets } from '../assets'
 import { emitGameOver, emitHud, emitVictory } from '../events'
 import { levels } from '../levels'
 import type { EnemyKind, EnemySpec, HudState, LevelSpec, MovingPlatformSpec, TouchControl } from '../types'
@@ -42,6 +41,25 @@ export class PlatformerScene extends Phaser.Scene {
     super('PlatformerScene')
   }
 
+  preload() {
+    const artPath = `${import.meta.env.BASE_URL}game-art/`
+    this.load.spritesheet('maria', `${artPath}maria-spritesheet.png`, {
+      frameWidth: 128,
+      frameHeight: 170,
+    })
+    this.load.image('platform-block', `${artPath}platform-block.png`)
+    this.load.image('moving-platform-block', `${artPath}moving-platform-block.png`)
+    this.load.image('invoice', `${artPath}invoice.png`)
+    this.load.image('server', `${artPath}server.png`)
+    this.load.image('erp', `${artPath}erp.png`)
+    this.load.image('cable', `${artPath}cable.png`)
+    this.load.image('panel', `${artPath}panel.png`)
+    this.load.image('ground-dev', `${artPath}ground-dev.png`)
+    this.load.image('flying-bug', `${artPath}flying-bug.png`)
+    this.load.image('ceo', `${artPath}ceo.png`)
+    this.load.image('goal', `${artPath}goal.png`)
+  }
+
   init(data: SceneData) {
     const requestedLevel = Number(new URLSearchParams(window.location.search).get('level') ?? '1') - 1
     const fallbackLevel = Number.isFinite(requestedLevel) ? Phaser.Math.Clamp(requestedLevel, 0, levels.length - 1) : 0
@@ -55,18 +73,18 @@ export class PlatformerScene extends Phaser.Scene {
   }
 
   create() {
-    createGeneratedAssets(this)
     this.level = levels[this.levelIndex]
     this.physics.world.setBounds(0, 0, this.level.worldWidth, 720)
     this.cameras.main.setBounds(0, 0, this.level.worldWidth, 720)
     this.createBackdrop()
+    this.createPlayerAnimations()
 
     const platforms = this.physics.add.staticGroup()
     for (const spec of this.level.platforms) {
-      const platform = platforms.create(spec.x, spec.y, 'platform-block') as Phaser.Types.Physics.Arcade.SpriteWithStaticBody
+      const texture = spec.moving ? 'moving-platform-block' : 'platform-block'
+      const platform = platforms.create(spec.x, spec.y, texture) as Phaser.Types.Physics.Arcade.SpriteWithStaticBody
       platform
         .setDisplaySize(spec.width, spec.height)
-        .setTint(this.level.theme.platform)
         .refreshBody()
 
       let label: Phaser.GameObjects.Text | undefined
@@ -106,15 +124,18 @@ export class PlatformerScene extends Phaser.Scene {
     }
 
     const goal = this.physics.add.staticSprite(this.level.goal.x, this.level.goal.y, 'goal')
+    goal.setDisplaySize(92, 112).refreshBody()
 
     this.enemies = this.physics.add.group({ allowGravity: false, immovable: true })
     for (const enemy of this.level.enemies) this.createEnemy(enemy)
 
     this.player = this.physics.add.sprite(this.level.playerStart.x, this.level.playerStart.y, 'maria')
     this.player.setCollideWorldBounds(true)
-    this.player.setSize(34, 56)
-    this.player.setOffset(11, 8)
+    this.player.setDisplaySize(66, 86)
+    this.player.setSize(58, 112)
+    this.player.setOffset(35, 38)
     this.player.setMaxVelocity(330, 760)
+    this.player.play('maria-idle')
 
     this.physics.add.collider(this.player, platforms)
     this.physics.add.collider(this.enemies, platforms)
@@ -166,7 +187,7 @@ export class PlatformerScene extends Phaser.Scene {
     if (jump && this.player.body.blocked.down) this.player.setVelocityY(-530)
     if (this.player.y > 760) this.damagePlayer(3)
 
-    this.player.setAngle(this.player.body.blocked.down ? 0 : Phaser.Math.Clamp(this.player.body.velocity.y / 65, -8, 8))
+    this.updatePlayerAnimation(left || right)
     this.updateMovingPlatforms(delta)
     this.updateEnemies()
   }
@@ -184,9 +205,10 @@ export class PlatformerScene extends Phaser.Scene {
     sky.fillRect(0, 0, width, height)
 
     for (let x = 0; x < this.level.worldWidth; x += 260) {
-      this.add.rectangle(x + 90, 575, 120, 150, this.level.theme.wall, 0.34)
-      this.add.rectangle(x + 90, 512, 76, 36, 0xffffff, 0.18)
-      this.add.line(x + 160, 520, 0, 0, 80, 36, this.level.theme.accent, 0.45).setLineWidth(5)
+      this.add.rectangle(x + 92, 575, 142, 150, this.level.theme.wall, 0.32)
+      this.add.rectangle(x + 92, 512, 96, 36, 0xffffff, 0.16)
+      this.add.line(x + 160, 520, 0, 0, 82, 38, this.level.theme.accent, 0.58).setLineWidth(5)
+      this.add.rectangle(x + 210, 624, 54, 110, 0x111827, 0.18)
     }
 
     this.add.text(36, 32, `Ecsig · ${this.level.name}`, {
@@ -206,6 +228,40 @@ export class PlatformerScene extends Phaser.Scene {
       stroke: '#0f172a',
       strokeThickness: compact ? 3 : 4,
     }).setScrollFactor(0)
+  }
+
+  private createPlayerAnimations() {
+    if (this.anims.exists('maria-idle')) return
+    this.anims.create({
+      key: 'maria-idle',
+      frames: this.anims.generateFrameNumbers('maria', { frames: [0, 1] }),
+      frameRate: 3,
+      repeat: -1,
+    })
+    this.anims.create({
+      key: 'maria-run',
+      frames: this.anims.generateFrameNumbers('maria', { frames: [2, 3, 4, 3] }),
+      frameRate: 10,
+      repeat: -1,
+    })
+    this.anims.create({
+      key: 'maria-jump',
+      frames: this.anims.generateFrameNumbers('maria', { frames: [5] }),
+      frameRate: 1,
+    })
+    this.anims.create({
+      key: 'maria-fall',
+      frames: this.anims.generateFrameNumbers('maria', { frames: [6] }),
+      frameRate: 1,
+    })
+  }
+
+  private updatePlayerAnimation(moving: boolean) {
+    if (!this.player.body.blocked.down) {
+      this.player.play(this.player.body.velocity.y < 0 ? 'maria-jump' : 'maria-fall', true)
+      return
+    }
+    this.player.play(moving ? 'maria-run' : 'maria-idle', true)
   }
 
   private bindTouchControls() {
@@ -241,7 +297,9 @@ export class PlatformerScene extends Phaser.Scene {
   private createEnemy(spec: EnemySpec) {
     const enemy = this.enemies.create(spec.x, spec.y, this.getEnemyTexture(spec.kind)) as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
     const scale = spec.scale ?? (spec.kind === 'ceo' ? 1.45 : 1)
-    enemy.setScale(scale)
+    if (spec.kind === 'ceo') enemy.setDisplaySize(118 * scale, 132 * scale)
+    else if (spec.kind === 'flying-bug') enemy.setDisplaySize(68 * scale, 58 * scale)
+    else enemy.setDisplaySize(72 * scale, 66 * scale)
     enemy.setData('minX', spec.minX)
     enemy.setData('maxX', spec.maxX)
     enemy.setData('speed', spec.speed)
@@ -251,7 +309,7 @@ export class PlatformerScene extends Phaser.Scene {
     enemy.setData('amplitude', spec.amplitude ?? 0)
     enemy.setData('phase', Phaser.Math.FloatBetween(0, Math.PI * 2))
     enemy.setVelocityX(spec.speed)
-    enemy.body.setSize(spec.kind === 'ceo' ? 62 : 44, spec.kind === 'flying-bug' ? 28 : 38)
+    enemy.body.setSize(spec.kind === 'ceo' ? 82 : 52, spec.kind === 'flying-bug' ? 38 : 48)
     if (spec.kind === 'ceo') this.bossAlive = true
   }
 

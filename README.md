@@ -11,7 +11,7 @@ Joc 2D de plataformes al navegador fet amb React 19, Vite, TypeScript i Phaser. 
 - Factures elèctriques per recollir, plataformes mòbils, cables i quadres elèctrics com obstacles.
 - Bugs voladors, devs maliciosos a terra i boss final CEO al nivell Direcció.
 - Pantalla inicial, game over i victòria amb augment i cita amb el DevOps.
-- Canvas responsive i assets generats amb Phaser, sense dependències d'imatges externes.
+- Canvas responsive amb sprites bitmap propis: Maria té animacions d'idle, cursa, salt i caiguda, i el mapa usa textures pixel-art 90s/Y2K generades per al projecte.
 
 ## Instal·lació
 
