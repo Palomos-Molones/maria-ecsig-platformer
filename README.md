@@ -4,11 +4,13 @@ Joc 2D de plataformes al navegador fet amb React 19, Vite, TypeScript i Phaser. 
 
 ## Joc
 
-- 3 nivells amb dificultat progressiva: Desenvolupament, Suport i Direcció.
+- 5 nivells amb dificultat progressiva: Desenvolupament, Suport, Facturació, Infraestructura i Direcció.
+- 5 vides inicials i música retro 8-bit activada quan comença la partida.
 - Controls de teclat: fletxes o WASD per moure, espai per saltar.
 - Controls tàctils en pantalles mòbils: botons esquerra, dreta i salt.
-- Factures elèctriques per recollir, bugs i tickets com enemics, cables i quadres elèctrics com obstacles.
-- Pantalla inicial, game over i victòria.
+- Factures elèctriques per recollir, plataformes mòbils, cables i quadres elèctrics com obstacles.
+- Bugs voladors, devs maliciosos a terra i boss final CEO al nivell Direcció.
+- Pantalla inicial, game over i victòria amb augment i cita amb el DevOps.
 - Canvas responsive i assets generats amb Phaser, sense dependències d'imatges externes.
 
 ## Instal·lació
@@ -23,7 +25,7 @@ npm ci
 npm run dev
 ```
 
-Per provar un nivell concret en local o a Pages, afegeix `?level=1`, `?level=2` o `?level=3` a la URL i prem `Jugar`.
+Per provar un nivell concret en local o a Pages, afegeix `?level=1`, `?level=2`, `?level=3`, `?level=4` o `?level=5` a la URL i prem `Jugar`.
 
 ## Validació
 

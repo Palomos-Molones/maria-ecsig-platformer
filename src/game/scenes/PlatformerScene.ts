@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { createGeneratedAssets } from '../assets'
 import { emitGameOver, emitHud, emitVictory } from '../events'
 import { levels } from '../levels'
-import type { EnemySpec, HudState, LevelSpec, TouchControl } from '../types'
+import type { EnemyKind, EnemySpec, HudState, LevelSpec, MovingPlatformSpec, TouchControl } from '../types'
 
 type SceneData = {
   levelIndex?: number
@@ -10,11 +10,21 @@ type SceneData = {
   health?: number
 }
 
+type MovingPlatform = {
+  sprite: Phaser.Types.Physics.Arcade.SpriteWithStaticBody
+  label?: Phaser.GameObjects.Text
+  axis: MovingPlatformSpec['axis']
+  min: number
+  max: number
+  speed: number
+  direction: 1 | -1
+}
+
 export class PlatformerScene extends Phaser.Scene {
   private levelIndex = 0
   private level!: LevelSpec
   private score = 0
-  private health = 3
+  private health = 5
   private invoices = 0
   private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
@@ -25,6 +35,8 @@ export class PlatformerScene extends Phaser.Scene {
   private onTouchControl?: (event: Event) => void
   private invulnerableUntil = 0
   private completed = false
+  private movingPlatforms: MovingPlatform[] = []
+  private bossAlive = false
 
   constructor() {
     super('PlatformerScene')
@@ -35,9 +47,11 @@ export class PlatformerScene extends Phaser.Scene {
     const fallbackLevel = Number.isFinite(requestedLevel) ? Phaser.Math.Clamp(requestedLevel, 0, levels.length - 1) : 0
     this.levelIndex = data.levelIndex ?? fallbackLevel
     this.score = data.score ?? 0
-    this.health = data.health ?? 3
+    this.health = data.health ?? 5
     this.invoices = 0
     this.completed = false
+    this.movingPlatforms = []
+    this.bossAlive = false
   }
 
   create() {
@@ -49,16 +63,34 @@ export class PlatformerScene extends Phaser.Scene {
 
     const platforms = this.physics.add.staticGroup()
     for (const spec of this.level.platforms) {
-      const platform = this.add.rectangle(spec.x, spec.y, spec.width, spec.height, this.level.theme.platform)
-      platform.setStrokeStyle(4, 0xffffff, 0.35)
-      platforms.add(platform)
+      const platform = platforms.create(spec.x, spec.y, 'platform-block') as Phaser.Types.Physics.Arcade.SpriteWithStaticBody
+      platform
+        .setDisplaySize(spec.width, spec.height)
+        .setTint(this.level.theme.platform)
+        .refreshBody()
+
+      let label: Phaser.GameObjects.Text | undefined
       if (spec.label) {
-        this.add.text(spec.x, spec.y - 6, spec.label, {
+        label = this.add.text(spec.x, spec.y - 6, spec.label, {
           color: '#ffffff',
           fontFamily: 'monospace',
           fontSize: '16px',
           fontStyle: '900',
+          stroke: '#0f172a',
+          strokeThickness: 4,
         }).setOrigin(0.5)
+      }
+      if (spec.moving) {
+        platform.setData('moving', true)
+        this.movingPlatforms.push({
+          sprite: platform,
+          label,
+          axis: spec.moving.axis,
+          min: spec.moving.min,
+          max: spec.moving.max,
+          speed: spec.moving.speed,
+          direction: 1,
+        })
       }
     }
 
@@ -109,7 +141,7 @@ export class PlatformerScene extends Phaser.Scene {
     this.emitHud()
   }
 
-  override update() {
+  override update(_time: number, delta: number) {
     if (!this.player || this.completed) return
 
     const left = this.cursors.left.isDown || this.keys.a.isDown || this.touchControls.left
@@ -135,11 +167,13 @@ export class PlatformerScene extends Phaser.Scene {
     if (this.player.y > 760) this.damagePlayer(3)
 
     this.player.setAngle(this.player.body.blocked.down ? 0 : Phaser.Math.Clamp(this.player.body.velocity.y / 65, -8, 8))
+    this.updateMovingPlatforms(delta)
     this.updateEnemies()
   }
 
   private createBackdrop() {
     const { width, height } = this.scale
+    const compact = width < 560
     const sky = this.add.graphics().setScrollFactor(0)
     sky.fillGradientStyle(
       this.level.theme.skyTop,
@@ -158,7 +192,7 @@ export class PlatformerScene extends Phaser.Scene {
     this.add.text(36, 32, `Ecsig · ${this.level.name}`, {
       color: '#ffffff',
       fontFamily: 'monospace',
-      fontSize: '24px',
+      fontSize: compact ? '19px' : '24px',
       fontStyle: '900',
       stroke: '#0f172a',
       strokeThickness: 5,
@@ -167,10 +201,10 @@ export class PlatformerScene extends Phaser.Scene {
     this.add.text(38, 64, this.level.subtitle, {
       color: '#eff6ff',
       fontFamily: 'monospace',
-      fontSize: '14px',
+      fontSize: compact ? '10px' : '14px',
       fontStyle: '700',
       stroke: '#0f172a',
-      strokeThickness: 4,
+      strokeThickness: compact ? 3 : 4,
     }).setScrollFactor(0)
   }
 
@@ -205,12 +239,38 @@ export class PlatformerScene extends Phaser.Scene {
   }
 
   private createEnemy(spec: EnemySpec) {
-    const enemy = this.enemies.create(spec.x, spec.y, spec.texture) as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
+    const enemy = this.enemies.create(spec.x, spec.y, this.getEnemyTexture(spec.kind)) as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
+    const scale = spec.scale ?? (spec.kind === 'ceo' ? 1.45 : 1)
+    enemy.setScale(scale)
     enemy.setData('minX', spec.minX)
     enemy.setData('maxX', spec.maxX)
     enemy.setData('speed', spec.speed)
+    enemy.setData('kind', spec.kind)
+    enemy.setData('health', spec.health ?? 1)
+    enemy.setData('baseY', spec.y)
+    enemy.setData('amplitude', spec.amplitude ?? 0)
+    enemy.setData('phase', Phaser.Math.FloatBetween(0, Math.PI * 2))
     enemy.setVelocityX(spec.speed)
-    enemy.body.setSize(44, 34)
+    enemy.body.setSize(spec.kind === 'ceo' ? 62 : 44, spec.kind === 'flying-bug' ? 28 : 38)
+    if (spec.kind === 'ceo') this.bossAlive = true
+  }
+
+  private getEnemyTexture(kind: EnemyKind) {
+    if (kind === 'flying-bug') return 'flying-bug'
+    if (kind === 'ceo') return 'ceo'
+    return 'ground-dev'
+  }
+
+  private updateMovingPlatforms(delta: number) {
+    for (const platform of this.movingPlatforms) {
+      const distance = platform.speed * (delta / 1000) * platform.direction
+      const next = platform.sprite[platform.axis] + distance
+      if (next >= platform.max) platform.direction = -1
+      if (next <= platform.min) platform.direction = 1
+      platform.sprite[platform.axis] = Phaser.Math.Clamp(next, platform.min, platform.max)
+      platform.sprite.refreshBody()
+      if (platform.label) platform.label[platform.axis] = platform.sprite[platform.axis]
+    }
   }
 
   private updateEnemies() {
@@ -219,10 +279,17 @@ export class PlatformerScene extends Phaser.Scene {
       const minX = enemy.getData('minX') as number
       const maxX = enemy.getData('maxX') as number
       const speed = enemy.getData('speed') as number
+      const kind = enemy.getData('kind') as EnemyKind
 
       if (enemy.x <= minX) enemy.setVelocityX(speed)
       if (enemy.x >= maxX) enemy.setVelocityX(-speed)
       enemy.setFlipX(enemy.body.velocity.x < 0)
+      if (kind === 'flying-bug') {
+        const amplitude = enemy.getData('amplitude') as number
+        const baseY = enemy.getData('baseY') as number
+        const phase = enemy.getData('phase') as number
+        enemy.y = baseY + Math.sin(this.time.now / 260 + phase) * amplitude
+      }
     }
   }
 
@@ -236,9 +303,21 @@ export class PlatformerScene extends Phaser.Scene {
   private hitEnemy(enemyObject: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.GameObjects.GameObject) {
     const enemy = enemyObject as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
     if (this.player.body.velocity.y > 120 && this.player.y < enemy.y - 8) {
-      enemy.destroy()
+      const kind = enemy.getData('kind') as EnemyKind
+      const nextHealth = (enemy.getData('health') as number) - 1
+      enemy.setData('health', nextHealth)
       this.player.setVelocityY(-360)
-      this.score += 180
+      this.score += kind === 'ceo' ? 320 : 180
+      if (nextHealth <= 0) {
+        if (kind === 'ceo') {
+          this.bossAlive = false
+          this.cameras.main.flash(260, 255, 232, 121)
+        }
+        enemy.destroy()
+      } else {
+        enemy.setTint(0xfff86b)
+        this.time.delayedCall(120, () => enemy.clearTint())
+      }
       this.emitHud()
       return
     }
@@ -270,6 +349,11 @@ export class PlatformerScene extends Phaser.Scene {
 
   private finishLevel() {
     if (this.completed) return
+    if (this.levelIndex === levels.length - 1 && this.bossAlive) {
+      this.damagePlayer(1)
+      this.cameras.main.shake(180, 0.012)
+      return
+    }
     this.completed = true
     this.score += 500 + this.invoices * 50
     this.emitHud()

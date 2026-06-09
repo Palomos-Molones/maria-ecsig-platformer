@@ -1,5 +1,6 @@
 import { RotateCcw, Trophy, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { startRetroMusic } from './audio/retroMusic'
 import { GameCanvas } from './game/GameCanvas'
 import type { HudState, RunState, TouchControl } from './game/types'
 import './App.css'
@@ -8,7 +9,7 @@ const initialHud: HudState = {
   levelName: 'Desenvolupament',
   levelIndex: 0,
   score: 0,
-  health: 3,
+  health: 5,
   invoices: 0,
   totalInvoices: 8,
 }
@@ -30,7 +31,8 @@ function App() {
     return () => window.removeEventListener('ecsig-game', onGameEvent)
   }, [])
 
-  const start = () => {
+  const start = async () => {
+    await startRetroMusic()
     setHud(initialHud)
     setRunId((current) => current + 1)
     setRunState('playing')
@@ -52,7 +54,7 @@ function App() {
             </div>
           </div>
           <div className="hud-grid" aria-live="polite">
-            <span>Nivell <strong>{hud.levelIndex + 1}/3</strong></span>
+            <span>Nivell <strong>{hud.levelIndex + 1}/5</strong></span>
             <span>{hud.levelName}</span>
             <span>Punts <strong>{hud.score}</strong></span>
             <span>Vida <strong>{'♥'.repeat(hud.health)}</strong></span>
@@ -103,21 +105,23 @@ function App() {
 
           {runState === 'intro' && (
             <div className="overlay intro-panel">
-              <div className="pixel-badge">React 19 + Phaser</div>
+              <div className="pixel-badge">React 19 + Phaser · 8-bit</div>
               <h1>Maria a Ecsig</h1>
               <p>
-                Salta entre servidors, esquiva bugs i tanca factures elèctriques abans
-                que el caos arribi a Direcció.
+                Maria salta entre ERPs, factures i quadres elèctrics per derrotar bugs,
+                devs maliciosos i el CEO que tampoc vol treballar.
               </p>
               <div className="level-strip">
                 <span>Desenvolupament</span>
                 <span>Suport</span>
+                <span>Facturació</span>
+                <span>Infraestructura</span>
                 <span>Direcció</span>
               </div>
               <button className="primary-action" type="button" onClick={start}>
                 Jugar
               </button>
-              <p className="keys">Fletxes o WASD per moure, espai per saltar.</p>
+              <p className="keys">Fletxes o WASD per moure, espai per saltar. En mòbil, botons tàctils.</p>
             </div>
           )}
 
@@ -137,8 +141,8 @@ function App() {
               <Trophy size={46} />
               <h2>Victòria</h2>
               <p>
-                Maria ha desplegat l'ERP, resolt Suport i convençut Direcció. Ecsig
-                torna a tenir llum.
+                Maria supera Direcció, aconsegueix un augment i una cita amb el DevOps.
+                Està canyón.
               </p>
               <button className="primary-action" type="button" onClick={start}>
                 Tornar a jugar

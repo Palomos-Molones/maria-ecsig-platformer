@@ -16,8 +16,16 @@ export type LevelTheme = {
   skyBottom: number
   wall: number
   platform: number
+  platformEdge: number
   accent: number
   hazard: number
+}
+
+export type MovingPlatformSpec = {
+  axis: 'x' | 'y'
+  min: number
+  max: number
+  speed: number
 }
 
 export type PlatformSpec = {
@@ -26,7 +34,10 @@ export type PlatformSpec = {
   width: number
   height: number
   label?: string
+  moving?: MovingPlatformSpec
 }
+
+export type EnemyKind = 'ground-dev' | 'flying-bug' | 'ceo'
 
 export type EnemySpec = {
   x: number
@@ -34,7 +45,10 @@ export type EnemySpec = {
   minX: number
   maxX: number
   speed: number
-  texture: 'bug' | 'ticket'
+  kind: EnemyKind
+  health?: number
+  amplitude?: number
+  scale?: number
 }
 
 export type ObstacleSpec = {

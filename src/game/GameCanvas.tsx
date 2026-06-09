@@ -27,7 +27,7 @@ export function GameCanvas({ active }: GameCanvasProps) {
         },
       },
       scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
       scene: [PlatformerScene],
