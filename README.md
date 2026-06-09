@@ -22,6 +22,8 @@ npm ci
 npm run dev
 ```
 
+Per provar un nivell concret en local o a Pages, afegeix `?level=1`, `?level=2` o `?level=3` a la URL i prem `Jugar`.
+
 ## Validació
 
 ```bash

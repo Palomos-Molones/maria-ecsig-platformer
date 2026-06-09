@@ -28,7 +28,9 @@ export class PlatformerScene extends Phaser.Scene {
   }
 
   init(data: SceneData) {
-    this.levelIndex = data.levelIndex ?? 0
+    const requestedLevel = Number(new URLSearchParams(window.location.search).get('level') ?? '1') - 1
+    const fallbackLevel = Number.isFinite(requestedLevel) ? Phaser.Math.Clamp(requestedLevel, 0, levels.length - 1) : 0
+    this.levelIndex = data.levelIndex ?? fallbackLevel
     this.score = data.score ?? 0
     this.health = data.health ?? 3
     this.invoices = 0
