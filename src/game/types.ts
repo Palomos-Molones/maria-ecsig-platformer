@@ -1,5 +1,7 @@
 export type RunState = 'intro' | 'playing' | 'game-over' | 'victory'
 
+export type TouchControl = 'left' | 'right' | 'jump'
+
 export type HudState = {
   levelName: string
   levelIndex: number

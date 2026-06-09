@@ -6,6 +6,7 @@ Joc 2D de plataformes al navegador fet amb React 19, Vite, TypeScript i Phaser. 
 
 - 3 nivells amb dificultat progressiva: Desenvolupament, Suport i Direcció.
 - Controls de teclat: fletxes o WASD per moure, espai per saltar.
+- Controls tàctils en pantalles mòbils: botons esquerra, dreta i salt.
 - Factures elèctriques per recollir, bugs i tickets com enemics, cables i quadres elèctrics com obstacles.
 - Pantalla inicial, game over i victòria.
 - Canvas responsive i assets generats amb Phaser, sense dependències d'imatges externes.

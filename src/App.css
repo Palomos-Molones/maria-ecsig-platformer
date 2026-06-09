@@ -104,6 +104,49 @@
   display: block;
 }
 
+.touch-controls {
+  position: absolute;
+  inset: auto 18px 18px;
+  z-index: 3;
+  display: none;
+  align-items: end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.touch-move {
+  display: flex;
+  gap: 12px;
+}
+
+.touch-controls button {
+  width: 62px;
+  height: 62px;
+  display: grid;
+  place-items: center;
+  color: #fff7ed;
+  background: rgba(15, 23, 42, 0.72);
+  border: 3px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  box-shadow: 0 6px 0 rgba(15, 23, 42, 0.72);
+  font: inherit;
+  font-size: 30px;
+  font-weight: 950;
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.touch-controls button:active {
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 rgba(15, 23, 42, 0.72);
+  background: rgba(14, 116, 144, 0.84);
+}
+
+.touch-jump {
+  margin-left: auto;
+}
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -248,5 +291,15 @@
   .stage-wrap {
     min-height: calc(100svh - 170px);
     aspect-ratio: auto;
+  }
+
+  .touch-controls {
+    display: flex;
+  }
+}
+
+@media (pointer: coarse) {
+  .touch-controls {
+    display: flex;
   }
 }

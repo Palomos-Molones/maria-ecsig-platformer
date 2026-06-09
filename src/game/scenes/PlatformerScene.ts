@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 import { createGeneratedAssets } from '../assets'
 import { emitGameOver, emitHud, emitVictory } from '../events'
 import { levels } from '../levels'
-import type { EnemySpec, HudState, LevelSpec } from '../types'
+import type { EnemySpec, HudState, LevelSpec, TouchControl } from '../types'
 
 type SceneData = {
   levelIndex?: number
@@ -20,6 +20,9 @@ export class PlatformerScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys
   private keys!: Record<'a' | 'd' | 'w' | 'space', Phaser.Input.Keyboard.Key>
   private enemies!: Phaser.Physics.Arcade.Group
+  private touchControls: Record<TouchControl, boolean> = { left: false, right: false, jump: false }
+  private touchJumpWasDown = false
+  private onTouchControl?: (event: Event) => void
   private invulnerableUntil = 0
   private completed = false
 
@@ -102,17 +105,21 @@ export class PlatformerScene extends Phaser.Scene {
       w: Phaser.Input.Keyboard.KeyCodes.W,
       space: Phaser.Input.Keyboard.KeyCodes.SPACE,
     }) as Record<'a' | 'd' | 'w' | 'space', Phaser.Input.Keyboard.Key>
+    this.bindTouchControls()
     this.emitHud()
   }
 
   override update() {
     if (!this.player || this.completed) return
 
-    const left = this.cursors.left.isDown || this.keys.a.isDown
-    const right = this.cursors.right.isDown || this.keys.d.isDown
+    const left = this.cursors.left.isDown || this.keys.a.isDown || this.touchControls.left
+    const right = this.cursors.right.isDown || this.keys.d.isDown || this.touchControls.right
+    const touchJump = this.touchControls.jump && !this.touchJumpWasDown
+    this.touchJumpWasDown = this.touchControls.jump
     const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
       Phaser.Input.Keyboard.JustDown(this.keys.w) ||
-      Phaser.Input.Keyboard.JustDown(this.keys.space)
+      Phaser.Input.Keyboard.JustDown(this.keys.space) ||
+      touchJump
 
     if (left) {
       this.player.setVelocityX(-250)
@@ -165,6 +172,20 @@ export class PlatformerScene extends Phaser.Scene {
       stroke: '#0f172a',
       strokeThickness: 4,
     }).setScrollFactor(0)
+  }
+
+  private bindTouchControls() {
+    this.touchControls = { left: false, right: false, jump: false }
+    this.touchJumpWasDown = false
+    this.onTouchControl = (event: Event) => {
+      const detail = (event as CustomEvent<{ control: TouchControl; pressed: boolean }>).detail
+      if (!detail || !(detail.control in this.touchControls)) return
+      this.touchControls[detail.control] = detail.pressed
+    }
+    window.addEventListener('ecsig-control', this.onTouchControl)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.onTouchControl) window.removeEventListener('ecsig-control', this.onTouchControl)
+    })
   }
 
   private createDecorations() {

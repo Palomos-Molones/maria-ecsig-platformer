@@ -1,7 +1,7 @@
 import { RotateCcw, Trophy, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { GameCanvas } from './game/GameCanvas'
-import type { HudState, RunState } from './game/types'
+import type { HudState, RunState, TouchControl } from './game/types'
 import './App.css'
 
 const initialHud: HudState = {
@@ -36,6 +36,10 @@ function App() {
     setRunState('playing')
   }
 
+  const pressControl = (control: TouchControl, pressed: boolean) => {
+    window.dispatchEvent(new CustomEvent('ecsig-control', { detail: { control, pressed } }))
+  }
+
   return (
     <main className="app-shell">
       <section className="game-frame" aria-label="Maria a Ecsig">
@@ -58,6 +62,44 @@ function App() {
 
         <div className="stage-wrap">
           {runState !== 'intro' && <GameCanvas key={runId} active={runState === 'playing'} />}
+
+          {runState === 'playing' && (
+            <div className="touch-controls" aria-label="Controls tàctils">
+              <div className="touch-move">
+                <button
+                  type="button"
+                  aria-label="Moure Maria a l'esquerra"
+                  onPointerDown={() => pressControl('left', true)}
+                  onPointerUp={() => pressControl('left', false)}
+                  onPointerLeave={() => pressControl('left', false)}
+                  onPointerCancel={() => pressControl('left', false)}
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  aria-label="Moure Maria a la dreta"
+                  onPointerDown={() => pressControl('right', true)}
+                  onPointerUp={() => pressControl('right', false)}
+                  onPointerLeave={() => pressControl('right', false)}
+                  onPointerCancel={() => pressControl('right', false)}
+                >
+                  →
+                </button>
+              </div>
+              <button
+                type="button"
+                className="touch-jump"
+                aria-label="Fer saltar Maria"
+                onPointerDown={() => pressControl('jump', true)}
+                onPointerUp={() => pressControl('jump', false)}
+                onPointerLeave={() => pressControl('jump', false)}
+                onPointerCancel={() => pressControl('jump', false)}
+              >
+                ↑
+              </button>
+            </div>
+          )}
 
           {runState === 'intro' && (
             <div className="overlay intro-panel">
