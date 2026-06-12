@@ -1,14 +1,7 @@
 import Phaser from 'phaser'
-import { playActionSound, setRetroMusicLevel } from '../../audio/retroMusic'
 import { emitGameOver, emitHud, emitVictory } from '../events'
 import { levels } from '../levels'
 import type { EnemyKind, EnemySpec, HudState, LevelSpec, MovingPlatformSpec, TouchControl } from '../types'
-
-const worldHeight = 720
-const fallDeathY = worldHeight + 42
-const playerDisplay = { width: 74, height: 98 }
-const playerBody = { width: 50, height: 78, offsetX: 39, offsetY: 80 }
-const invoiceDisplay = { width: 48, height: 58, yOffset: -22 }
 
 type SceneData = {
   levelIndex?: number
@@ -81,9 +74,8 @@ export class PlatformerScene extends Phaser.Scene {
 
   create() {
     this.level = levels[this.levelIndex]
-    setRetroMusicLevel(this.levelIndex)
-    this.physics.world.setBounds(0, 0, this.level.worldWidth, worldHeight + 180)
-    this.cameras.main.setBounds(0, 0, this.level.worldWidth, worldHeight)
+    this.physics.world.setBounds(0, 0, this.level.worldWidth, 720)
+    this.cameras.main.setBounds(0, 0, this.level.worldWidth, 720)
     this.createBackdrop()
     this.createPlayerAnimations()
 
@@ -123,21 +115,12 @@ export class PlatformerScene extends Phaser.Scene {
     this.createDecorations()
     const invoiceGroup = this.physics.add.staticGroup()
     for (const invoice of this.level.invoices) {
-      const invoiceSprite = invoiceGroup.create(
-        invoice.x,
-        invoice.y + invoiceDisplay.yOffset,
-        'invoice',
-      ) as Phaser.Types.Physics.Arcade.SpriteWithStaticBody
-      invoiceSprite
-        .setDisplaySize(invoiceDisplay.width, invoiceDisplay.height)
-        .refreshBody()
+      invoiceGroup.create(invoice.x, invoice.y, 'invoice')
     }
 
     const obstacleGroup = this.physics.add.staticGroup()
     for (const obstacle of this.level.obstacles) {
-      const sprite = obstacleGroup.create(obstacle.x, obstacle.y, obstacle.texture) as Phaser.Types.Physics.Arcade.SpriteWithStaticBody
-      if (obstacle.texture === 'panel') sprite.setDisplaySize(74, 92).refreshBody()
-      if (obstacle.texture === 'cable') sprite.setDisplaySize(80, 46).refreshBody()
+      obstacleGroup.create(obstacle.x, obstacle.y, obstacle.texture)
     }
 
     const goal = this.physics.add.staticSprite(this.level.goal.x, this.level.goal.y, 'goal')
@@ -148,9 +131,9 @@ export class PlatformerScene extends Phaser.Scene {
 
     this.player = this.physics.add.sprite(this.level.playerStart.x, this.level.playerStart.y, 'maria')
     this.player.setCollideWorldBounds(true)
-    this.player.setDisplaySize(playerDisplay.width, playerDisplay.height)
-    this.player.setSize(playerBody.width, playerBody.height)
-    this.player.setOffset(playerBody.offsetX, playerBody.offsetY)
+    this.player.setDisplaySize(66, 86)
+    this.player.setSize(58, 112)
+    this.player.setOffset(35, 38)
     this.player.setMaxVelocity(330, 760)
     this.player.play('maria-idle')
 
@@ -201,11 +184,8 @@ export class PlatformerScene extends Phaser.Scene {
       this.player.setVelocityX(0)
     }
 
-    if (jump && this.player.body.blocked.down) {
-      this.player.setVelocityY(-530)
-      playActionSound('jump')
-    }
-    if (this.player.y > fallDeathY) this.damagePlayer(this.health)
+    if (jump && this.player.body.blocked.down) this.player.setVelocityY(-530)
+    if (this.player.y > 760) this.damagePlayer(3)
 
     this.updatePlayerAnimation(left || right)
     this.updateMovingPlatforms(delta)
@@ -317,7 +297,7 @@ export class PlatformerScene extends Phaser.Scene {
   private createEnemy(spec: EnemySpec) {
     const enemy = this.enemies.create(spec.x, spec.y, this.getEnemyTexture(spec.kind)) as Phaser.Types.Physics.Arcade.SpriteWithDynamicBody
     const scale = spec.scale ?? (spec.kind === 'ceo' ? 1.45 : 1)
-    if (spec.kind === 'ceo') enemy.setDisplaySize(104 * scale, 118 * scale)
+    if (spec.kind === 'ceo') enemy.setDisplaySize(118 * scale, 132 * scale)
     else if (spec.kind === 'flying-bug') enemy.setDisplaySize(68 * scale, 58 * scale)
     else enemy.setDisplaySize(72 * scale, 66 * scale)
     enemy.setData('minX', spec.minX)
@@ -329,8 +309,7 @@ export class PlatformerScene extends Phaser.Scene {
     enemy.setData('amplitude', spec.amplitude ?? 0)
     enemy.setData('phase', Phaser.Math.FloatBetween(0, Math.PI * 2))
     enemy.setVelocityX(spec.speed)
-    enemy.body.setSize(spec.kind === 'ceo' ? 74 : 52, spec.kind === 'flying-bug' ? 38 : 48)
-    if (spec.kind === 'ceo') enemy.body.setOffset(29, 30)
+    enemy.body.setSize(spec.kind === 'ceo' ? 82 : 52, spec.kind === 'flying-bug' ? 38 : 48)
     if (spec.kind === 'ceo') this.bossAlive = true
   }
 
@@ -374,7 +353,6 @@ export class PlatformerScene extends Phaser.Scene {
 
   private collectInvoice(invoice: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.GameObjects.GameObject) {
     invoice.destroy()
-    playActionSound('invoice')
     this.invoices += 1
     this.score += 120
     this.emitHud()
@@ -387,7 +365,6 @@ export class PlatformerScene extends Phaser.Scene {
       const nextHealth = (enemy.getData('health') as number) - 1
       enemy.setData('health', nextHealth)
       this.player.setVelocityY(-360)
-      playActionSound('enemy')
       this.score += kind === 'ceo' ? 320 : 180
       if (nextHealth <= 0) {
         if (kind === 'ceo') {
@@ -409,7 +386,6 @@ export class PlatformerScene extends Phaser.Scene {
     if (this.time.now < this.invulnerableUntil || this.completed) return
 
     this.health -= amount
-    playActionSound('damage')
     this.invulnerableUntil = this.time.now + 1100
     this.cameras.main.shake(130, 0.008)
     this.player.setTint(0xff6b6b)
@@ -441,13 +417,11 @@ export class PlatformerScene extends Phaser.Scene {
     this.emitHud()
 
     if (this.levelIndex === levels.length - 1) {
-      playActionSound('victory')
       this.physics.pause()
       emitVictory()
       return
     }
 
-    playActionSound('level')
     this.cameras.main.flash(450, 255, 250, 205)
     this.time.delayedCall(620, () => {
       this.scene.restart({

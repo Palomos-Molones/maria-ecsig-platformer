@@ -272,7 +272,7 @@ export const levels: LevelSpec[] = [
       { x: 1370, y: 370, minX: 1180, maxX: 1580, speed: 140, kind: 'flying-bug', amplitude: 34 },
       { x: 2050, y: 588, minX: 1850, maxX: 2260, speed: 150, kind: 'ground-dev' },
       { x: 2790, y: 370, minX: 2520, maxX: 3100, speed: 160, kind: 'flying-bug', amplitude: 38 },
-      { x: 3330, y: 286, minX: 3210, maxX: 3520, speed: 92, kind: 'ceo', health: 5, scale: 1.35 },
+      { x: 3330, y: 322, minX: 3210, maxX: 3520, speed: 92, kind: 'ceo', health: 5, scale: 1.55 },
     ],
     obstacles: [
       { x: 990, y: 596, texture: 'cable' },
